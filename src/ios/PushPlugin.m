@@ -27,6 +27,7 @@
 #define GMP_NO_MODULES true
 
 #import "PushPlugin.h"
+#import <UserNotifications/UserNotifications.h>
 
 @implementation PushPlugin : CDVPlugin
 
@@ -230,13 +231,21 @@
 
             }
 
-            if ([[UIApplication sharedApplication]respondsToSelector:@selector(registerUserNotificationSettings:)]) {
-                UIUserNotificationSettings *settings = [UIUserNotificationSettings settingsForTypes:UserNotificationTypes categories:categories];
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    [[UIApplication sharedApplication] registerUserNotificationSettings:settings];
-                    [[UIApplication sharedApplication] registerForRemoteNotifications];
-                });
-            }
+            UNUserNotificationCenter* center = [UNUserNotificationCenter currentNotificationCenter];
+            [center requestAuthorizationWithOptions:(UNAuthorizationOptionAlert + UNAuthorizationOptionSound)
+                completionHandler:^(BOOL granted, NSError * _Nullable error) {
+                    if (!granted) {
+                        [self didFailToObtainAuthorizationForNotifications];
+                        return;
+                    }
+                    if ([[UIApplication sharedApplication]respondsToSelector:@selector(registerUserNotificationSettings:)]) {
+                        UIUserNotificationSettings *settings = [UIUserNotificationSettings settingsForTypes:UserNotificationTypes categories:categories];
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            [[UIApplication sharedApplication] registerUserNotificationSettings:settings];
+                            [[UIApplication sharedApplication] registerForRemoteNotifications];
+                        });
+                    }
+                }];
 
             // Read GoogleService-Info.plist
             NSString *path = [[NSBundle mainBundle] pathForResource:@"GoogleService-Info" ofType:@"plist"];
@@ -368,6 +377,19 @@
     }
     NSLog(@"Push Plugin register failed");
     [self failWithMessage:self.callbackId withMsg:@"" withError:error];
+}
+
+- (void)didFailToObtainAuthorizationForNotifications
+{
+    if (self.callbackId == nil) {
+        NSLog(@"Unexpected call to didFailToObtainAuthorizationForNotifications, ignoring");
+        return;
+    }
+    NSLog(@"Push Plugin didFailToObtainAuthorizationForNotifications");
+    NSString        *errorMessage = @"User did not grant authorization for notifications";
+    CDVPluginResult *commandResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:errorMessage];
+
+    [self.commandDelegate sendPluginResult:commandResult callbackId:self.callbackId];
 }
 
 - (void)notificationReceived {
