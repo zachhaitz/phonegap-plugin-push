@@ -342,6 +342,10 @@ module.exports = {
     return new PushNotification(options);
   },
 
+  listenForRegistration: function listenForRegistration(successCallback, errorCallback) {
+    exec(successCallback, errorCallback, 'PushNotification', 'listenForRegistration', []);
+  },
+
   hasPermission: function hasPermission(successCallback, errorCallback) {
     exec(successCallback, errorCallback, 'PushNotification', 'hasPermission', []);
   },
