@@ -495,6 +495,11 @@
     [self.commandDelegate sendPluginResult:commandResult callbackId:command.callbackId];
 }
 
+- (void)listenForRegistration:(CDVInvokedUrlCommand *)command
+{
+    self.callbackId = command.callbackId;
+}
+
 - (void)hasPermission:(CDVInvokedUrlCommand *)command
 {
     BOOL enabled = NO;
